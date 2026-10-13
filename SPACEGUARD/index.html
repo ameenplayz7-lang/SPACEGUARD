@@ -1,0 +1,1850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPACEGUARD — Orbital Monitor</title>
+
+<style>
+:root {
+  --bg: #070b12;
+  --panel: rgba(12, 19, 29, .96);
+  --border: #243143;
+  --text: #e3edf8;
+  --muted: #8494a9;
+  --cyan: #75c8ee;
+  --green: #75d7a4;
+  --yellow: #e9c878;
+  --red: #e98282;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+}
+
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+
+#scene {
+  position: fixed;
+  inset: 0;
+}
+
+canvas { display: block; }
+
+.topbar {
+  position: fixed;
+  z-index: 10;
+  inset: 0 0 auto;
+  height: 66px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 22px;
+  background: rgba(7, 11, 18, .94);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.logo {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #35556a;
+  border-radius: 8px;
+  color: var(--cyan);
+  font-size: 23px;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: 3px;
+}
+
+.brand p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.clock {
+  color: #aabbd0;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.panel {
+  position: fixed;
+  z-index: 5;
+  top: 82px;
+  bottom: 16px;
+  width: 286px;
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  scrollbar-width: thin;
+  scrollbar-color: #344255 transparent;
+}
+
+.left { left: 16px; }
+.right { right: 16px; width: 260px; }
+
+.section-title {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.7px;
+}
+
+.search-wrap { position: relative; }
+
+.search-wrap input {
+  width: 100%;
+  padding: 11px 10px 11px 32px;
+  color: var(--text);
+  background: #080f19;
+  border: 1px solid #2a3a4e;
+  border-radius: 6px;
+  outline: none;
+  font-size: 12px;
+}
+
+.search-wrap input:focus { border-color: #5a8ba6; }
+
+.search-icon {
+  position: absolute;
+  top: 9px;
+  left: 11px;
+  color: var(--muted);
+}
+
+.button-row {
+  display: flex;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.btn {
+  padding: 9px 10px;
+  border: 1px solid #2d4258;
+  border-radius: 6px;
+  color: #d8e8f4;
+  background: #122131;
+  font-size: 11px;
+}
+
+.btn:hover { background: #1b3044; }
+.btn:disabled { opacity: .5; cursor: wait; }
+
+.primary {
+  color: #e2f5ff;
+  background: #17384b;
+  border-color: #365d73;
+}
+
+.button-row .btn { flex: 1; }
+
+select {
+  width: 100%;
+  margin-top: 9px;
+  padding: 10px;
+  color: var(--text);
+  background: #080f19;
+  border: 1px solid #2a3a4e;
+  border-radius: 6px;
+  outline: none;
+  font-size: 11px;
+}
+
+.results {
+  max-height: 225px;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+
+.result {
+  padding: 10px 7px;
+  border-bottom: 1px solid #1e2a39;
+  cursor: pointer;
+}
+
+.result:hover { background: #13202e; }
+
+.result-name {
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.result-sub {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 17px;
+}
+
+.metric {
+  padding: 11px;
+  border: 1px solid #202d3e;
+  border-radius: 7px;
+  background: #09111b;
+}
+
+.metric-label {
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: .7px;
+}
+
+.metric-value {
+  margin-top: 8px;
+  font-size: 22px;
+  font-weight: 750;
+}
+
+.metric-sub {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.divider {
+  height: 1px;
+  margin: 16px 0;
+  background: var(--border);
+}
+
+.filter {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 4px;
+  color: #b7c6d7;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.filter input { accent-color: var(--cyan); }
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.note {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.65;
+}
+
+.object-name {
+  margin-bottom: 8px;
+  font-size: 18px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.badge {
+  display: inline-block;
+  padding: 5px 8px;
+  margin-bottom: 12px;
+  color: var(--cyan);
+  background: #132433;
+  border: 1px solid #293f52;
+  border-radius: 5px;
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+
+.detail {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #1e2a39;
+  font-size: 10px;
+}
+
+.detail span:first-child { color: var(--muted); }
+
+.detail span:last-child {
+  max-width: 145px;
+  text-align: right;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.empty {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.full { width: 100%; margin-top: 8px; }
+
+.bottom-left, .bottom-right {
+  position: fixed;
+  z-index: 4;
+  bottom: 18px;
+  padding: 9px 12px;
+  border: 1px solid #263447;
+  border-radius: 6px;
+  background: rgba(7, 12, 20, .91);
+  color: #9badc0;
+  font-size: 10px;
+  pointer-events: none;
+}
+
+.bottom-left { left: 320px; }
+.bottom-right { right: 292px; }
+
+.loading {
+  position: fixed;
+  z-index: 30;
+  inset: 66px 0 0;
+  display: grid;
+  place-items: center;
+  background: rgba(7, 11, 18, .95);
+  transition: opacity .35s;
+}
+
+.loading-inner { width: min(320px, 90%); text-align: center; }
+
+.loading-title {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 3px;
+}
+
+.loading-msg {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.progress {
+  height: 3px;
+  margin-top: 20px;
+  background: #1d2b3c;
+}
+
+.progress > div {
+  height: 100%;
+  width: 0;
+  background: #75c8ee;
+  transition: width .2s;
+}
+
+.toast {
+  position: fixed;
+  z-index: 40;
+  top: 78px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 90%;
+  padding: 10px 14px;
+  border: 1px solid #34495e;
+  border-radius: 6px;
+  background: #122131;
+  color: #e2edf6;
+  font-size: 11px;
+}
+
+.hidden { display: none !important; }
+
+@media(max-width: 850px) {
+  .right { display: none; }
+  .left { width: 270px; }
+  .bottom-left { left: 300px; }
+  .bottom-right { display: none; }
+}
+
+@media(max-width: 550px) {
+  .topbar { height: 58px; padding: 0 10px; }
+  .brand h1 { font-size: 13px; }
+  .brand p, .status { display: none; }
+  .panel.left {
+    top: 70px;
+    left: 7px;
+    bottom: 7px;
+    width: min(265px, calc(100vw - 14px));
+  }
+  .bottom-left { display: none; }
+  .loading { inset: 58px 0 0; }
+}
+</style>
+</head>
+
+<body>
+
+<div id="scene"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">⌁</div>
+    <div>
+      <h1>SPACEGUARD</h1>
+      <p>ORBITAL MONITORING SYSTEM</p>
+    </div>
+  </div>
+
+  <div class="status">
+    <span class="status-dot"></span>
+    <span id="connection">STARTING</span>
+  </div>
+
+  <div class="clock" id="clock">UTC --:--:--</div>
+</header>
+
+<aside class="panel left">
+
+  <div class="section-title">SEARCH ORBITAL OBJECTS</div>
+
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input id="search" placeholder="ISS, Hubble, Starlink, NORAD ID..." autocomplete="off">
+  </div>
+
+  <div class="button-row">
+    <button class="btn primary" id="searchBtn">Search</button>
+    <button class="btn" id="resetBtn">Reset view</button>
+  </div>
+
+  <div class="button-row">
+    <button class="btn" id="onlineBtn">Fetch by NORAD ID</button>
+  </div>
+
+  <div id="results" class="results"></div>
+
+  <div class="divider"></div>
+
+  <div class="section-title">CATALOG OVERVIEW</div>
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-label">OBJECTS</div>
+      <div class="metric-value" id="total">0</div>
+      <div class="metric-sub">Loaded records</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">DEBRIS</div>
+      <div class="metric-value" id="debrisCount">0</div>
+      <div class="metric-sub">Debris records</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">SATELLITES</div>
+      <div class="metric-value" id="satCount">0</div>
+      <div class="metric-sub">Satellite records</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">VISIBLE</div>
+      <div class="metric-value" id="visibleCount">0</div>
+      <div class="metric-sub">Current filters</div>
+    </div>
+  </div>
+
+  <div class="section-title">OBJECT FILTERS</div>
+
+  <label class="filter">
+    <input type="checkbox" id="stations" checked>
+    <span class="dot" style="background:#75d7a4"></span>
+    Space stations
+  </label>
+
+  <label class="filter">
+    <input type="checkbox" id="satellites" checked>
+    <span class="dot" style="background:#75c8ee"></span>
+    Satellites
+  </label>
+
+  <label class="filter">
+    <input type="checkbox" id="debris" checked>
+    <span class="dot" style="background:#e9c878"></span>
+    Orbital debris
+  </label>
+
+  <div class="divider"></div>
+
+  <div class="section-title">ORBIT VISUALIZATION</div>
+
+  <label class="filter">
+    <input type="checkbox" id="showRings" checked>
+    <span class="dot" style="background:#75869b"></span>
+    Reference orbital rings
+  </label>
+
+  <label class="filter">
+    <input type="checkbox" id="showTrails">
+    <span class="dot" style="background:#75c8ee"></span>
+    Satellite orbit trails
+  </label>
+
+  <p class="note">
+    Reference rings show different orbital heights and inclinations.
+    They are visual guides, not the calculated orbit of every satellite.
+  </p>
+
+  <div class="divider"></div>
+
+  <div class="section-title">DATA CONTROLS</div>
+
+  <button class="btn full" id="refreshBtn">Refresh orbital catalog</button>
+  <button class="btn full" id="clearBtn">Clear selection</button>
+
+  <div class="divider"></div>
+
+  <p class="note">
+    Positions are propagated from public orbital element data using
+    SGP4 when real records are available. Catalog positions are
+    calculated estimates, not live onboard telemetry.
+  </p>
+
+</aside>
+
+<aside class="panel right">
+
+  <div class="section-title">SELECTED OBJECT</div>
+
+  <div id="emptyDetails" class="empty">
+    Search for an object or click a marker on the globe to inspect
+    its calculated orbital information.
+  </div>
+
+  <div id="details" class="hidden">
+    <div class="object-name" id="dName">—</div>
+    <div class="badge" id="dType">OBJECT</div>
+
+    <div class="detail"><span>NORAD ID</span><span id="dId">—</span></div>
+    <div class="detail"><span>Altitude</span><span id="dAlt">—</span></div>
+    <div class="detail"><span>Velocity</span><span id="dVel">—</span></div>
+    <div class="detail"><span>Latitude</span><span id="dLat">—</span></div>
+    <div class="detail"><span>Longitude</span><span id="dLon">—</span></div>
+    <div class="detail"><span>Inclination</span><span id="dInc">—</span></div>
+    <div class="detail"><span>Eccentricity</span><span id="dEcc">—</span></div>
+    <div class="detail"><span>Orbital period</span><span id="dPeriod">—</span></div>
+    <div class="detail"><span>TLE epoch</span><span id="dEpoch">—</span></div>
+
+    <button class="btn primary full" id="focusBtn">Focus object</button>
+    <button class="btn full" id="trailBtn">Toggle selected orbit</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section-title">ORBITAL DATA</div>
+
+  <p class="note">
+    Source: CelesTrak public GP/TLE catalogs. Catalog availability,
+    coverage, and update frequency depend on the source.
+  </p>
+
+</aside>
+
+<div class="bottom-left">
+  <span style="color:#75d7a4">●</span> Stations
+  &nbsp; <span style="color:#75c8ee">●</span> Satellites
+  &nbsp; <span style="color:#e9c878">●</span> Debris
+</div>
+
+<div class="bottom-right" id="dataStatus">Waiting for catalog…</div>
+
+<div class="loading" id="loading">
+  <div class="loading-inner">
+    <div class="loading-title">SPACEGUARD</div>
+    <div class="loading-msg" id="loadingMsg">Preparing Earth…</div>
+    <div class="progress"><div id="progressBar"></div></div>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+    "satellite.js": "https://cdn.jsdelivr.net/npm/satellite.js@6.0.1/dist/satellite.es.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import * as satellite from "satellite.js";
+
+/* =========================================================
+   CONFIGURATION
+   ========================================================= */
+
+const EARTH_KM = 6371;
+const ER = 2.6;
+
+const COLOR = {
+  STATION: 0x75d7a4,
+  SATELLITE: 0x75c8ee,
+  DEBRIS: 0xe9c878
+};
+
+const SIZE = {
+  STATION: 0.025,
+  SATELLITE: 0.017,
+  DEBRIS: 0.011
+};
+
+const GROUPS = [
+  "STATIONS",
+  "STARLINK",
+  "ONEWEB",
+  "GPS-OPS",
+  "GALILEO",
+  "GLONASS-OPS",
+  "BEIDOU",
+  "WEATHER",
+  "SCIENCE",
+  "EARTH-RESOURCES",
+  "IRIDIUM-NEXT",
+  "FENGYUN-1C-DEBRIS",
+  "IRIDIUM-33-DEBRIS",
+  "COSMOS-2251-DEBRIS"
+];
+
+const POPULAR = [
+  { id: 25544, name: "ISS (ZARYA)", type: "STATION" },
+  { id: 20580, name: "HUBBLE SPACE TELESCOPE", type: "SATELLITE" },
+  { id: 48274, name: "TIANHE / TIANGONG", type: "STATION" },
+  { id: 50463, name: "JAMES WEBB SPACE TELESCOPE", type: "SATELLITE" },
+  { id: 25994, name: "TERRA", type: "SATELLITE" },
+  { id: 27424, name: "AQUA", type: "SATELLITE" },
+  { id: 49260, name: "LANDSAT 9", type: "SATELLITE" },
+  { id: 43013, name: "NOAA 20", type: "SATELLITE" },
+  { id: 54234, name: "NOAA 21", type: "SATELLITE" },
+  { id: 37849, name: "SUOMI NPP", type: "SATELLITE" }
+];
+
+let scene, camera, renderer, controls;
+let earth, cloudMesh, moon;
+let earthGroup, stars;
+let raycaster, pointer;
+
+const objects = [];
+const byId = new Map();
+const markers = [];
+const referenceRings = [];
+const orbitLines = [];
+
+let selected = null;
+let busy = false;
+let refreshTimer = null;
+let lastPropagation = 0;
+let lastDetailsUpdate = 0;
+let toastTimer;
+
+const $ = id => document.getElementById(id);
+
+/* =========================================================
+   STARTUP
+   ========================================================= */
+
+init();
+
+function init() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x070b12);
+
+  camera = new THREE.PerspectiveCamera(
+    45, window.innerWidth / window.innerHeight, 0.01, 2000
+  );
+
+  camera.position.set(0, 4.5, 10.5);
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    powerPreference: "high-performance"
+  });
+
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.7));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.NoToneMapping;
+
+  $("scene").appendChild(renderer.domElement);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.055;
+  controls.minDistance = 3.1;
+  controls.maxDistance = 40;
+
+  scene.add(new THREE.HemisphereLight(0xb8c8dc, 0x111724, 0.8));
+
+  const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+  sun.position.set(7, 5, 8);
+  scene.add(sun);
+
+  const fill = new THREE.DirectionalLight(0x8098b2, 0.18);
+  fill.position.set(-7, -3, -6);
+  scene.add(fill);
+
+  earthGroup = new THREE.Group();
+  scene.add(earthGroup);
+
+  createEarth();
+  createMoon();
+  createStars();
+  createReferenceRings();
+
+  raycaster = new THREE.Raycaster();
+  pointer = new THREE.Vector2();
+
+  renderer.domElement.addEventListener("pointerdown", onPointerDown);
+
+  window.addEventListener("resize", onResize);
+
+  $("searchBtn").addEventListener("click", searchObjects);
+  $("search").addEventListener("input", searchObjects);
+  $("search").addEventListener("keydown", event => {
+    if (event.key === "Enter") searchObjects();
+  });
+
+  $("onlineBtn").addEventListener("click", fetchByNoradId);
+  $("resetBtn").addEventListener("click", resetView);
+  $("refreshBtn").addEventListener("click", loadCatalog);
+  $("clearBtn").addEventListener("click", clearSelection);
+  $("focusBtn").addEventListener("click", focusSelected);
+  $("trailBtn").addEventListener("click", toggleSelectedTrail);
+
+  for (const id of ["stations", "satellites", "debris"]) {
+    $(id).addEventListener("change", applyFilters);
+  }
+
+  $("showRings").addEventListener("change", () => {
+    for (const ring of referenceRings) {
+      ring.visible = $("showRings").checked;
+    }
+  });
+
+  $("showTrails").addEventListener("change", () => {
+    if (!$("showTrails").checked) {
+      clearAllTrails();
+    } else {
+      rebuildTrails();
+    }
+  });
+
+  // Temporary visual-only markers until the catalog loads.
+  addDemoObjects();
+
+  animate();
+  updateClock();
+
+  loadTextures().finally(() => loadCatalog());
+}
+
+/* =========================================================
+   EARTH AND SPACE
+   ========================================================= */
+
+function createEarth() {
+  const geo = new THREE.SphereGeometry(ER, 72, 72);
+
+  const mat = new THREE.MeshPhongMaterial({
+    color: 0xffffff,
+    shininess: 6,
+    specular: new THREE.Color(0x152331)
+  });
+
+  earth = new THREE.Mesh(geo, mat);
+  earthGroup.add(earth);
+
+  const cloudGeo = new THREE.SphereGeometry(ER * 1.003, 48, 48);
+
+  const cloudMat = new THREE.MeshLambertMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.11,
+    depthWrite: false
+  });
+
+  cloudMesh = new THREE.Mesh(cloudGeo, cloudMat);
+  earthGroup.add(cloudMesh);
+}
+
+async function loadTextures() {
+  const loader = new THREE.TextureLoader();
+
+  setLoading(10, "Loading Earth textures…");
+
+  try {
+    const tex = await loader.loadAsync(
+      "https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg"
+    );
+
+    tex.colorSpace = THREE.SRGBColorSpace;
+    earth.material.map = tex;
+    earth.material.needsUpdate = true;
+  } catch (e) {
+    console.warn("Earth texture unavailable:", e);
+    earth.material.color.set(0x35536b);
+  }
+
+  try {
+    const tex = await loader.loadAsync(
+      "https://threejs.org/examples/textures/planets/earth_clouds_1024.png"
+    );
+
+    tex.colorSpace = THREE.SRGBColorSpace;
+    cloudMesh.material.map = tex;
+    cloudMesh.material.needsUpdate = true;
+  } catch {
+    cloudMesh.visible = false;
+  }
+}
+
+function createMoon() {
+  moon = new THREE.Mesh(
+    new THREE.SphereGeometry(0.22, 20, 20),
+    new THREE.MeshStandardMaterial({
+      color: 0x858a90,
+      roughness: 1,
+      metalness: 0
+    })
+  );
+
+  moon.position.set(8, 2.2, -7);
+  scene.add(moon);
+}
+
+function createStars() {
+  const count = 1400;
+  const pos = new Float32Array(count * 3);
+
+  for (let i = 0; i < count; i++) {
+    const r = 60 + Math.random() * 90;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+
+    pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+    pos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+    pos[i * 3 + 2] = r * Math.cos(phi);
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+
+  stars = new THREE.Points(
+    geo,
+    new THREE.PointsMaterial({
+      color: 0x9eacc4,
+      size: 0.2,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0.42,
+      depthWrite: false,
+      blending: THREE.NormalBlending
+    })
+  );
+
+  scene.add(stars);
+}
+
+/* =========================================================
+   ORBITAL REFERENCE RINGS
+
+   These are deliberately separate from satellite trajectories.
+   They show orbital regions at different heights and tilts.
+   They are NOT claims about individual satellite orbits.
+   ========================================================= */
+
+function makeRing(radius, tiltX, tiltZ, color, opacity) {
+  const group = new THREE.Group();
+
+  const points = [];
+  const steps = 256;
+
+  for (let i = 0; i <= steps; i++) {
+    const a = i / steps * Math.PI * 2;
+
+    points.push(new THREE.Vector3(
+      Math.cos(a) * radius,
+      0,
+      Math.sin(a) * radius
+    ));
+  }
+
+  const geo = new THREE.BufferGeometry().setFromPoints(points);
+
+  const mat = new THREE.LineBasicMaterial({
+    color,
+    transparent: true,
+    opacity,
+    depthWrite: false,
+    blending: THREE.NormalBlending
+  });
+
+  const line = new THREE.LineLoop(geo, mat);
+
+  group.add(line);
+  group.rotation.x = tiltX;
+  group.rotation.z = tiltZ;
+
+  earthGroup.add(group);
+  referenceRings.push(group);
+
+  return group;
+}
+
+function createReferenceRings() {
+  // Each ring sits OUTSIDE Earth. None uses additive glow.
+  // The different radii and inclinations create a spaced-out
+  // orbital framework instead of one bright blue halo.
+
+  makeRing(ER * 1.13, 0.12, 0.03, 0x62768d, 0.30);
+  makeRing(ER * 1.22, 0.85, 0.12, 0x527b91, 0.24);
+  makeRing(ER * 1.34, 1.15, -0.35, 0x7b8290, 0.19);
+  makeRing(ER * 1.48, 0.38, 0.85, 0x526d86, 0.16);
+  makeRing(ER * 1.65, 1.28, 0.65, 0x657084, 0.13);
+}
+
+/* =========================================================
+   CATALOG RECORDS
+   ========================================================= */
+
+function classify(name, group = "") {
+  const s = `${name} ${group}`.toUpperCase();
+
+  if (
+    s.includes("DEBRIS") ||
+    s.includes("FRAGMENT") ||
+    s.includes("FENGYUN-1C") ||
+    s.includes("IRIDIUM 33 DEB") ||
+    s.includes("COSMOS 2251 DEB")
+  ) return "DEBRIS";
+
+  if (
+    s.includes("ISS") ||
+    s.includes("ZARYA") ||
+    s.includes("TIANHE") ||
+    s.includes("TIANGONG") ||
+    s.includes("SPACE STATION")
+  ) return "STATION";
+
+  return "SATELLITE";
+}
+
+function parseTLE(text, source = "") {
+  const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  const records = [];
+
+  for (let i = 0; i < lines.length - 2; i++) {
+    if (!lines[i + 1].startsWith("1 ") ||
+        !lines[i + 2].startsWith("2 ")) continue;
+
+    const name = lines[i].replace(/^0\s+/, "").trim();
+    const tle1 = lines[i + 1];
+    const tle2 = lines[i + 2];
+
+    const id1 = Number(tle1.slice(2, 7).trim());
+    const id2 = Number(tle2.slice(2, 7).trim());
+
+    if (!id1 || id1 !== id2) {
+      i += 2;
+      continue;
+    }
+
+    records.push({
+      id: id1,
+      name,
+      tle1,
+      tle2,
+      source,
+      type: classify(name, source)
+    });
+
+    i += 2;
+  }
+
+  return records;
+}
+
+function createRecord(r) {
+  try {
+    const satrec = satellite.twoline2satrec(r.tle1, r.tle2);
+
+    if (!satrec || satrec.error) return null;
+
+    const inc = Number(r.tle2.slice(8, 16).trim());
+    const ecc = Number("0." + r.tle2.slice(26, 33).trim());
+    const motion = Number(r.tle2.slice(52, 63).trim());
+
+    return {
+      ...r,
+      satrec,
+      isDemo: false,
+      mesh: null,
+      trail: null,
+      visible: true,
+      altitude: 0,
+      velocity: 0,
+      latitude: 0,
+      longitude: 0,
+      inclination: Number.isFinite(inc) ? inc : 0,
+      eccentricity: Number.isFinite(ecc) ? ecc : 0,
+      period: motion > 0 ? 1440 / motion : 0
+    };
+  } catch {
+    return null;
+  }
+}
+
+function addObject(o) {
+  const old = byId.get(o.id);
+
+  if (old) {
+    // A real orbital record always replaces a demo placeholder.
+    if (old.isDemo && !o.isDemo) {
+      removeVisual(old);
+
+      const i = objects.indexOf(old);
+      if (i >= 0) objects[i] = o;
+
+      byId.set(o.id, o);
+      createMarker(o);
+
+      if (selected === old) selected = o;
+
+      return o;
+    }
+
+    // Update a record when a fresh TLE is received.
+    if (!old.isDemo && !o.isDemo) {
+      old.tle1 = o.tle1;
+      old.tle2 = o.tle2;
+      old.satrec = o.satrec;
+      old.source = o.source;
+      old.name = o.name || old.name;
+      old.inclination = o.inclination;
+      old.eccentricity = o.eccentricity;
+      old.period = o.period;
+      return old;
+    }
+
+    return old;
+  }
+
+  objects.push(o);
+  byId.set(o.id, o);
+  createMarker(o);
+
+  return o;
+}
+
+function addDemoObjects() {
+  for (const p of POPULAR) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = ER + 0.5 + Math.random() * 0.6;
+
+    addObject({
+      ...p,
+      satrec: null,
+      tle1: null,
+      tle2: null,
+      source: "DEMO",
+      isDemo: true,
+      mesh: null,
+      trail: null,
+      visible: true,
+      altitude: 400 + Math.random() * 900,
+      velocity: 7.5,
+      latitude: 0,
+      longitude: 0,
+      inclination: 51.6,
+      eccentricity: 0.001,
+      period: 95,
+      demoAngle: angle,
+      demoRadius: radius
+    });
+  }
+
+  updateCounters();
+}
+
+/* =========================================================
+   MARKERS
+   ========================================================= */
+
+function createMarker(o) {
+  const radius = SIZE[o.type] || SIZE.SATELLITE;
+
+  const geo = new THREE.SphereGeometry(radius, 8, 8);
+
+  const mat = new THREE.MeshBasicMaterial({
+    color: COLOR[o.type] || COLOR.SATELLITE,
+    toneMapped: false
+  });
+
+  const mesh = new THREE.Mesh(geo, mat);
+
+  mesh.userData.objectId = o.id;
+
+  // Invisible child sphere gives the mouse a larger click target.
+  const hit = new THREE.Mesh(
+    new THREE.SphereGeometry(radius * 3.4, 6, 6),
+    new THREE.MeshBasicMaterial({
+      visible: false,
+      depthWrite: false
+    })
+  );
+
+  hit.userData.objectId = o.id;
+  mesh.add(hit);
+
+  o.mesh = mesh;
+  earthGroup.add(mesh);
+  markers.push(mesh);
+}
+
+function removeVisual(o) {
+  if (o.mesh) {
+    earthGroup.remove(o.mesh);
+
+    o.mesh.geometry.dispose();
+    o.mesh.material.dispose();
+
+    for (const child of o.mesh.children) {
+      child.geometry?.dispose();
+      child.material?.dispose();
+    }
+
+    o.mesh = null;
+  }
+
+  removeTrail(o);
+}
+
+/* =========================================================
+   REAL ORBIT PROPAGATION
+   ========================================================= */
+
+function propagate(o, date = new Date()) {
+  if (!o.mesh) return;
+
+  if (!o.satrec) {
+    // Visual-only placeholder until real orbital data arrives.
+    const angle = date.getTime() / 120000 + o.demoAngle;
+
+    const radius = o.demoRadius || ER + 0.7;
+
+    o.mesh.position.set(
+      Math.cos(angle) * radius,
+      Math.sin(angle * 0.7) * 0.45,
+      Math.sin(angle) * radius
+    );
+
+    return;
+  }
+
+  try {
+    const pv = satellite.propagate(o.satrec, date);
+
+    if (!pv?.position || !pv?.velocity) return;
+
+    const pos = pv.position;
+    const vel = pv.velocity;
+
+    if (![pos.x, pos.y, pos.z].every(Number.isFinite)) return;
+
+    const gmst = satellite.gstime(date);
+    const ecf = satellite.eciToEcf(pos, gmst);
+    const geo = satellite.eciToGeodetic(pos, gmst);
+
+    o.latitude = satellite.degreesLat(geo.latitude);
+    o.longitude = satellite.degreesLong(geo.longitude);
+    o.altitude = geo.height;
+
+    o.velocity = Math.sqrt(
+      vel.x * vel.x + vel.y * vel.y + vel.z * vel.z
+    );
+
+    const scale = ER / EARTH_KM;
+
+    o.mesh.position.set(
+      ecf.x * scale,
+      ecf.z * scale,
+      -ecf.y * scale
+    );
+  } catch (e) {
+    console.warn("Propagation error:", o.id, e);
+  }
+}
+
+/* =========================================================
+   FETCH CelesTrak
+   ========================================================= */
+
+async function fetchText(url, timeoutMs = 18000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+
+    return await response.text();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function loadCatalog() {
+  if (busy) return;
+
+  busy = true;
+  $("refreshBtn").disabled = true;
+
+  setLoading(15, "Fetching public orbital catalog…");
+  $("connection").textContent = "CONNECTING";
+
+  let good = 0;
+  let failed = 0;
+
+  try {
+    const batchSize = 3;
+
+    for (let i = 0; i < GROUPS.length; i += batchSize) {
+      const batch = GROUPS.slice(i, i + batchSize);
+
+      const results = await Promise.allSettled(
+        batch.map(async group => {
+          const url =
+            "https://celestrak.org/NORAD/elements/gp.php?GROUP=" +
+            encodeURIComponent(group) +
+            "&FORMAT=TLE";
+
+          const text = await fetchText(url);
+          return { group, text };
+        })
+      );
+
+      for (const result of results) {
+        if (result.status !== "fulfilled") {
+          failed++;
+          continue;
+        }
+
+        const { group, text } = result.value;
+
+        for (const r of parseTLE(text, group)) {
+          const o = createRecord(r);
+          if (o) addObject(o);
+        }
+
+        good++;
+      }
+
+      setLoading(
+        20 + Math.round((Math.min(i + batchSize, GROUPS.length) / GROUPS.length) * 55),
+        `Loading catalogs… ${Math.min(i + batchSize, GROUPS.length)}/${GROUPS.length}`
+      );
+    }
+
+    await fetchPopular();
+
+    propagateAll();
+    applyFilters();
+    updateCounters();
+    searchObjects();
+
+    const realCount = objects.filter(o => !o.isDemo).length;
+
+    $("dataStatus").textContent =
+      realCount.toLocaleString() + " real orbital records";
+
+    if (realCount > 0) {
+      $("connection").textContent = "CATALOG CONNECTED";
+      notify(
+        `${realCount.toLocaleString()} real records loaded. ` +
+        `${failed} catalog groups unavailable.`
+      );
+    } else {
+      $("connection").textContent = "DEMO MODE";
+      notify("Catalog unavailable. Check your internet connection.");
+    }
+  } catch (e) {
+    console.error(e);
+    $("connection").textContent = "CATALOG ERROR";
+    notify("Unable to load catalog. Demo view remains available.");
+  } finally {
+    busy = false;
+    $("refreshBtn").disabled = false;
+
+    setLoading(100, "Ready");
+
+    setTimeout(() => $("loading").classList.add("hidden"), 350);
+  }
+}
+
+async function fetchPopular() {
+  // Individual lookups are useful for popular objects that are
+  // absent from the chosen groups.
+  const missing = POPULAR.filter(p => {
+    const old = byId.get(p.id);
+    return !old || !old.satrec;
+  });
+
+  for (let i = 0; i < missing.length; i += 3) {
+    const batch = missing.slice(i, i + 3);
+
+    const results = await Promise.allSettled(
+      batch.map(async p => {
+        const url =
+          "https://celestrak.org/NORAD/elements/gp.php?CATNR=" +
+          p.id +
+          "&FORMAT=TLE";
+
+        return { p, text: await fetchText(url) };
+      })
+    );
+
+    for (const result of results) {
+      if (result.status !== "fulfilled") continue;
+
+      const { p, text } = result.value;
+
+      for (const r of parseTLE(text, "POPULAR")) {
+        if (r.id !== p.id) continue;
+
+        r.name = r.name || p.name;
+        r.type = p.type;
+
+        const o = createRecord(r);
+        if (o) addObject(o);
+      }
+    }
+  }
+}
+
+/* =========================================================
+   SEARCH — LOADED OBJECTS + DIRECT NORAD LOOKUP
+   ========================================================= */
+
+function searchObjects() {
+  const query = $("search").value.trim().toLowerCase();
+  const results = $("results");
+
+  results.replaceChildren();
+
+  if (!query) return;
+
+  const matches = objects.filter(o => {
+    return (
+      o.name.toLowerCase().includes(query) ||
+      String(o.id) === query ||
+      String(o.id).includes(query)
+    );
+  }).slice(0, 60);
+
+  if (!matches.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent =
+      "No match in the loaded catalog. For a numeric NORAD ID, use Fetch by NORAD ID.";
+    results.appendChild(empty);
+    return;
+  }
+
+  for (const o of matches) {
+    const row = document.createElement("div");
+    row.className = "result";
+
+    const name = document.createElement("div");
+    name.className = "result-name";
+    name.textContent = o.name;
+
+    const sub = document.createElement("div");
+    sub.className = "result-sub";
+    sub.textContent = `${o.type} · NORAD ${o.id}` +
+      (o.isDemo ? " · DEMO" : "");
+
+    row.append(name, sub);
+
+    row.addEventListener("click", () => {
+      selectObject(o);
+      focusSelected();
+    });
+
+    results.appendChild(row);
+  }
+}
+
+async function fetchByNoradId() {
+  const query = $("search").value.trim();
+
+  if (!/^\d+$/.test(query)) {
+    notify("Enter a numeric NORAD catalog ID, such as 25544.");
+    return;
+  }
+
+  const id = Number(query);
+  const existing = byId.get(id);
+
+  if (existing?.satrec) {
+    selectObject(existing);
+    focusSelected();
+    notify("Object already loaded.");
+    return;
+  }
+
+  $("onlineBtn").disabled = true;
+  notify("Fetching NORAD " + id + "…");
+
+  try {
+    const url =
+      "https://celestrak.org/NORAD/elements/gp.php?CATNR=" +
+      id +
+      "&FORMAT=TLE";
+
+    const text = await fetchText(url);
+    const records = parseTLE(text, "DIRECT LOOKUP");
+
+    const record = records.find(r => r.id === id);
+
+    if (!record) {
+      notify("No TLE record returned for NORAD " + id + ".");
+      return;
+    }
+
+    const o = createRecord(record);
+
+    if (!o) {
+      notify("Could not create an orbital record for this object.");
+      return;
+    }
+
+    addObject(o);
+    propagate(o);
+    applyFilters();
+    updateCounters();
+    searchObjects();
+
+    selectObject(byId.get(id) || o);
+    focusSelected();
+
+    notify("Loaded " + record.name + ".");
+  } catch (e) {
+    console.error(e);
+    notify("Direct lookup failed. Check the connection or NORAD ID.");
+  } finally {
+    $("onlineBtn").disabled = false;
+  }
+}
+
+/* =========================================================
+   FILTERS AND COUNTERS
+   ========================================================= */
+
+function applyFilters() {
+  for (const o of objects) {
+    const allowed =
+      (o.type !== "STATION" || $("stations").checked) &&
+      (o.type !== "SATELLITE" || $("satellites").checked) &&
+      (o.type !== "DEBRIS" || $("debris").checked);
+
+    o.visible = allowed;
+
+    if (o.mesh) o.mesh.visible = allowed;
+    if (o.trail) o.trail.visible = allowed && $("showTrails").checked;
+  }
+
+  updateCounters();
+
+  if ($("showTrails").checked) rebuildTrails();
+
+  // Search results remain searchable even when a category is hidden.
+  searchObjects();
+}
+
+function updateCounters() {
+  $("total").textContent = objects.length.toLocaleString();
+
+  $("debrisCount").textContent =
+    objects.filter(o => o.type === "DEBRIS").length.toLocaleString();
+
+  $("satCount").textContent =
+    objects.filter(o => o.type === "SATELLITE" || o.type === "STATION")
+      .length.toLocaleString();
+
+  $("visibleCount").textContent =
+    objects.filter(o => o.visible).length.toLocaleString();
+}
+
+/* =========================================================
+   REAL ORBIT TRAILS
+   ========================================================= */
+
+function makeTrail(o) {
+  removeTrail(o);
+
+  if (!o.satrec) return;
+
+  const period = Math.max(85, Math.min(1600, o.period || 95));
+  const now = new Date();
+  const points = [];
+  const samples = 110;
+
+  for (let i = 0; i <= samples; i++) {
+    const future = new Date(
+      now.getTime() + (period * 60 * 1000 * i / samples)
+    );
+
+    const pv = satellite.propagate(o.satrec, future);
+    if (!pv?.position) continue;
+
+    const gmst = satellite.gstime(future);
+    const ecf = satellite.eciToEcf(pv.position, gmst);
+    const scale = ER / EARTH_KM;
+
+    points.push(new THREE.Vector3(
+      ecf.x * scale,
+      ecf.z * scale,
+      -ecf.y * scale
+    ));
+  }
+
+  if (points.length < 2) return;
+
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+  const material = new THREE.LineBasicMaterial({
+    color: COLOR[o.type] || COLOR.SATELLITE,
+    transparent: true,
+    opacity: 0.12,
+    depthWrite: false,
+    blending: THREE.NormalBlending
+  });
+
+  const line = new THREE.Line(geometry, material);
+  line.visible = $("showTrails").checked && o.visible;
+
+  earthGroup.add(line);
+  o.trail = line;
+  orbitLines.push(line);
+}
+
+function removeTrail(o) {
+  if (!o.trail) return;
+
+  earthGroup.remove(o.trail);
+  o.trail.geometry.dispose();
+  o.trail.material.dispose();
+
+  const i = orbitLines.indexOf(o.trail);
+  if (i >= 0) orbitLines.splice(i, 1);
+
+  o.trail = null;
+}
+
+function clearAllTrails() {
+  for (const o of objects) removeTrail(o);
+}
+
+function rebuildTrails() {
+  clearAllTrails();
+
+  if (!$("showTrails").checked) return;
+
+  // Keep the trail count deliberately low.
+  const chosen = [];
+
+  if (selected?.satrec && selected.visible) chosen.push(selected);
+
+  const remaining = objects.filter(o =>
+    o.satrec && o.visible && o !== selected
+  );
+
+  const max = Math.max(0, 12 - chosen.length);
+
+  if (max > 0 && remaining.length) {
+    const n = Math.min(max, remaining.length);
+
+    for (let i = 0; i < n; i++) {
+      chosen.push(remaining[Math.floor(i * remaining.length / n)]);
+    }
+  }
+
+  for (const o of chosen) makeTrail(o);
+}
+
+function toggleSelectedTrail() {
+  if (!selected) {
+    notify("Select an object first.");
+    return;
+  }
+
+  if (!selected.satrec) {
+    notify("This is a demo marker. Wait for real orbital data.");
+    return;
+  }
+
+  if (selected.trail) {
+    removeTrail(selected);
+    notify("Selected orbit trail hidden.");
+  } else {
+    makeTrail(selected);
+    notify("Selected orbit trail shown.");
+  }
+}
+
+/* =========================================================
+   SELECTION AND DETAILS
+   ========================================================= */
+
+function selectObject(o) {
+  if (!o) return;
+
+  selected = o;
+
+  for (const item of objects) {
+    if (!item.mesh) continue;
+
+    item.mesh.material.color.set(COLOR[item.type] || COLOR.SATELLITE);
+    item.mesh.scale.setScalar(1);
+  }
+
+  if (o.mesh) {
+    o.mesh.material.color.set(0xffffff);
+    o.mesh.scale.setScalar(1.35);
+  }
+
+  $("emptyDetails").classList.add("hidden");
+  $("details").classList.remove("hidden");
+
+  updateDetails();
+
+  if ($("showTrails").checked) rebuildTrails();
+}
+
+function updateDetails() {
+  if (!selected) return;
+
+  const o = selected;
+
+  $("dName").textContent = o.name;
+  $("dType").textContent = o.type;
+  $("dId").textContent = o.id;
+  $("dAlt").textContent = Number(o.altitude).toFixed(1) + " km";
+  $("dVel").textContent = Number(o.velocity).toFixed(3) + " km/s";
+  $("dLat").textContent = Number(o.latitude).toFixed(3) + "°";
+  $("dLon").textContent = Number(o.longitude).toFixed(3) + "°";
+  $("dInc").textContent = Number(o.inclination).toFixed(3) + "°";
+  $("dEcc").textContent = Number(o.eccentricity).toFixed(6);
+  $("dPeriod").textContent = Number(o.period).toFixed(2) + " min";
+
+  if (o.tle1) {
+    const year = Number(o.tle1.slice(18, 20));
+    const day = Number(o.tle1.slice(20, 32));
+
+    const fullYear = year < 57 ? year + 2000 : year + 1900;
+
+    $("dEpoch").textContent = `${fullYear} / ${day.toFixed(3)}`;
+  } else {
+    $("dEpoch").textContent = "Demo / unavailable";
+  }
+}
+
+function clearSelection() {
+  selected = null;
+
+  for (const o of objects) {
+    if (o.mesh) {
+      o.mesh.material.color.set(COLOR[o.type] || COLOR.SATELLITE);
+      o.mesh.scale.setScalar(1);
+    }
+  }
+
+  $("emptyDetails").classList.remove("hidden");
+  $("details").classList.add("hidden");
+
+  if ($("showTrails").checked) rebuildTrails();
+}
+
+function focusSelected() {
+  if (!selected?.mesh) return;
+
+  const target = selected.mesh.position.clone();
+
+  const direction = camera.position.clone()
+    .sub(controls.target)
+    .normalize();
+
+  const distance = Math.max(4.2, camera.position.distanceTo(controls.target));
+
+  controls.target.copy(target);
+
+  camera.position.copy(
+    target.clone().add(direction.multiplyScalar(distance))
+  );
+
+  controls.update();
+}
+
+function resetView() {
+  controls.target.set(0, 0, 0);
+  camera.position.set(0, 4.5, 10.5);
+  controls.update();
+  clearSelection();
+}
+
+/* =========================================================
+   PICKING
+   ========================================================= */
+
+function onPointerDown(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+  raycaster.setFromCamera(pointer, camera);
+
+  const visibleMarkers = objects
+    .filter(o => o.visible && o.mesh)
+    .map(o => o.mesh);
+
+  const hits = raycaster.intersectObjects(visibleMarkers, true);
+
+  if (!hits.length) return;
+
+  let hit = hits[0].object;
+
+  while (hit && hit.userData.objectId === undefined) {
+    hit = hit.parent;
+  }
+
+  if (hit) {
+    const o = byId.get(hit.userData.objectId);
+
+    if (o) selectObject(o);
+  }
+}
+
+/* =========================================================
+   UI HELPERS AND ANIMATION
+   ========================================================= */
+
+function setLoading(progress, message) {
+  $("progressBar").style.width = Math.max(0, Math.min(100, progress)) + "%";
+  $("loadingMsg").textContent = message;
+}
+
+function notify(message) {
+  const toast = $("toast");
+
+  toast.textContent = message;
+  toast.classList.remove("hidden");
+
+  clearTimeout(toastTimer);
+
+  toastTimer = setTimeout(() => {
+    toast.classList.add("hidden");
+  }, 3800);
+}
+
+function updateClock() {
+  $("clock").textContent = "UTC " +
+    new Date().toISOString().slice(11, 19);
+
+  setTimeout(updateClock, 1000);
+}
+
+function propagateAll() {
+  const now = new Date();
+
+  for (const o of objects) propagate(o, now);
+}
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.7));
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  controls.update();
+
+  const now = performance.now();
+
+  // Keep reference rings static and understated.
+  // Rotate the Earth and clouds very slowly.
+  earth.rotation.y += 0.000025;
+
+  if (cloudMesh) cloudMesh.rotation.y += 0.000035;
+
+  if (now - lastPropagation > 1000) {
+    propagateAll();
+    lastPropagation = now;
+  }
+
+  if (selected && now - lastDetailsUpdate > 750) {
+    updateDetails();
+    lastDetailsUpdate = now;
+  }
+
+  renderer.render(scene, camera);
+}
+</script>
+
+</body>
+</html>
